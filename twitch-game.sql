@@ -22,7 +22,6 @@ INSERT INTO speedruncom_twitch_game (game, twitchGame) VALUES ('4pdv0o1w', 'Soni
 INSERT INTO speedruncom_twitch_game (game, twitchGame) VALUES ('8nd2gv10', 'Sonic the Hedgehog 2');
 INSERT INTO speedruncom_twitch_game (game, twitchGame) VALUES ('n4d7zg67', 'Sonic the Hedgehog Chaos');
 INSERT INTO speedruncom_twitch_game (game, twitchGame) VALUES ('n4d74gd7', 'Sonic the Hedgehog 3');
-INSERT INTO speedruncom_twitch_game (game, twitchGame) VALUES ('n4d74gd7', 'Sonic 3 and Knuckles Master Edition');
 INSERT INTO speedruncom_twitch_game (game, twitchGame) VALUES ('8m1z5z10', 'Sonic the Hedgehog 4: Episode I');
 INSERT INTO speedruncom_twitch_game (game, twitchGame) VALUES ('x36950dl', 'Sonic the Hedgehog 4: Episode II');
 INSERT INTO speedruncom_twitch_game (game, twitchGame) VALUES ('xv1pg718', 'Sonic Adventure DX: Director''s Cut');
