@@ -193,8 +193,8 @@ async def clear_game(database: DatabaseMain,
     cursor: aioodbc.cursor.Cursor
     async with await database.cursor() as cursor:
         query: str = 'DELETE FROM speedruncom_game WHERE broadcaster=?'
-        cursor.execute(query, (channel,))
-        database.commit()
+        await cursor.execute(query, (channel,))
+        await database.commit()
         return cursor.rowcount != 0
 
 
