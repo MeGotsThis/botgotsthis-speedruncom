@@ -1,6 +1,6 @@
 CREATE TABLE speedruncom_twitch_game (
     twitchGame VARCHAR NOT NULL PRIMARY KEY,
-    game VARCHAR NULL UNIQUE
+    game VARCHAR NULL
 );
 
 CREATE TABLE speedruncom_user (
