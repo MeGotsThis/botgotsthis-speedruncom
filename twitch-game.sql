@@ -25,7 +25,6 @@ INSERT INTO speedruncom_twitch_game (game, twitchGame) VALUES ('n4d74gd7', 'Soni
 INSERT INTO speedruncom_twitch_game (game, twitchGame) VALUES ('8m1z5z10', 'Sonic the Hedgehog 4: Episode I');
 INSERT INTO speedruncom_twitch_game (game, twitchGame) VALUES ('x36950dl', 'Sonic the Hedgehog 4: Episode II');
 INSERT INTO speedruncom_twitch_game (game, twitchGame) VALUES ('xv1pg718', 'Sonic Adventure DX: Director''s Cut');
-INSERT INTO speedruncom_twitch_game (game, twitchGame) VALUES ('l3dx5v1y', 'Sonic the Hedgehog');
 INSERT INTO speedruncom_twitch_game (game, twitchGame) VALUES ('29d37g6l', 'Crash Bandicoot: Warped');
 INSERT INTO speedruncom_twitch_game (game, twitchGame) VALUES ('jy65206e', 'Yu-Gi-Oh! Duelists of the Roses');
 INSERT INTO speedruncom_twitch_game (game, twitchGame) VALUES ('kdkr9q6m', 'Yu-Gi-Oh! GX: The Beginning of Destiny');
