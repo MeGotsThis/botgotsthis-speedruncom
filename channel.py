@@ -312,9 +312,15 @@ async def commandSpeedrunComCategory(args: ChatCommandArgs) -> bool:
     if len(args.message) < 2:
         await speedruncom.clear_category(args.database, args.chat.channel,
                                          game.id, levelId)
-        categoryId: str = speedruncom.default_categoryid(categories)
-        category: speedrundata.Category = categories[categoryId]
-        args.chat.send(f'''\
+        categoryId: Optional[str] = speedruncom.default_categoryid(categories)
+        if categoryId is None:
+            args.chat.send(f'''\
+Set category to default 'Unknown' for !wr and !pb in \
+'{game.internationalName}{levelText}'\
+''')
+        else:
+            category: speedrundata.Category = categories[categoryId]
+            args.chat.send(f'''\
 Set category to default '{category.name}' for !wr and !pb in \
 '{game.internationalName}{levelText}'\
 ''')

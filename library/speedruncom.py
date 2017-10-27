@@ -890,10 +890,13 @@ def botReloadSpeedrun(send: Send) -> None:
     send('Done')
 
 
-def default_categoryid(categories: Dict[str, speedrundata.Category]) -> str:
+def default_categoryid(categories: Dict[str, speedrundata.Category]
+                       ) -> Optional[str]:
     for id, category in categories.items():
         if not category.miscellaneous:
             return id
+    if not categories:
+        return None
     return next(iter(categories))
 
 

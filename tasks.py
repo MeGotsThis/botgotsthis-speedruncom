@@ -160,8 +160,11 @@ async def load_info(timestamp: datetime,
         if maybeCategoryId is not None:
             categoryId = maybeCategoryId
         else:
-            categoryId = speedruncom.default_categoryid(
+            cId: Optional[str] = speedruncom.default_categoryid(
                 speedruncom.games[gameId].game_categories)
+            if cId is None:
+                return
+            categoryId = cId
         variables: Dict[str, str] = speedruncom.default_sub_categories(
             speedruncom.games[gameId], levelId, categoryId)
         variables.update(await speedruncom.channel_variables(
