@@ -4,6 +4,7 @@ from typing import Dict, List, Optional  # noqa: F401
 import aioodbc.cursor  # noqa: F401
 
 from lib.data import ChatCommandArgs
+from lib.database import DatabaseMain
 from lib.helper.chat import cooldown, feature, permission
 
 from .library import speedruncom, speedrundata
@@ -15,8 +16,8 @@ async def commandWRFull(args: ChatCommandArgs) -> bool:
 
 
 async def commandWR(args: ChatCommandArgs) -> bool:
-    liteFormat: bool = await args.database.hasFeature(args.chat.channel,
-                                                      'speedrun.com-lite')
+    liteFormat: bool = await args.data.hasFeature(args.chat.channel,
+                                                  'speedrun.com-lite')
     return await commandWRCommand(args, liteFormat)
 
 
@@ -24,8 +25,9 @@ async def commandWR(args: ChatCommandArgs) -> bool:
 @feature('speedrun.com')
 async def commandWRCommand(args: ChatCommandArgs,
                            liteFormat: bool) -> bool:
+    db: DatabaseMain
     cursor: aioodbc.cursor.Cursor
-    async with await args.database.cursor() as cursor:
+    async with DatabaseMain.acquire() as db, await db.cursor() as cursor:
         chanGameId: Optional[str]
         chanGameId = await speedruncom.channel_gameid(cursor, args.chat)
 
@@ -88,8 +90,8 @@ async def commandPBFull(args: ChatCommandArgs) -> bool:
 
 
 async def commandPB(args: ChatCommandArgs) -> bool:
-    liteFormat: bool = await args.database.hasFeature(args.chat.channel,
-                                                      'speedrun.com-lite')
+    liteFormat: bool = await args.data.hasFeature(args.chat.channel,
+                                                  'speedrun.com-lite')
     return await commandPBCommand(args, liteFormat)
 
 
@@ -97,8 +99,9 @@ async def commandPB(args: ChatCommandArgs) -> bool:
 @feature('speedrun.com')
 async def commandPBCommand(args: ChatCommandArgs,
                            liteFormat: bool) -> bool:
+    db: DatabaseMain
     cursor: aioodbc.cursor.Cursor
-    async with await args.database.cursor() as cursor:
+    async with DatabaseMain.acquire() as db, await db.cursor() as cursor:
         userId: str = await speedruncom.channel_user(cursor, args.chat)
         await speedruncom.load_user(userId, args.timestamp)
         playerId: str = ''
@@ -168,8 +171,11 @@ change categories''')
 @feature('speedrun.com')
 @permission('broadcaster')
 async def commandSpeedrunComUser(args: ChatCommandArgs) -> bool:
+    db: DatabaseMain
+    cursor: aioodbc.cursor.Cursor
     if len(args.message) < 2:
-        await speedruncom.clear_user(args.database, args.chat.channel)
+        async with DatabaseMain.acquire() as db:
+            await speedruncom.clear_user(db, args.chat.channel)
         args.chat.send(
             f'Set the speedrun.com user for {args.chat.channel} to default')
     else:
@@ -180,8 +186,8 @@ async def commandSpeedrunComUser(args: ChatCommandArgs) -> bool:
             args.chat.send(
                 f"Cannot find '{args.message.query}' on speedrun.com")
         else:
-            await speedruncom.set_user(args.database, args.chat.channel,
-                                       identifier)
+            async with DatabaseMain.acquire() as db:
+                await speedruncom.set_user(db, args.chat.channel, identifier)
             args.chat.send(f'''\
 Set the speedrun.user for {args.chat.channel} to using {args.message.query}''')
     return True
@@ -190,27 +196,28 @@ Set the speedrun.user for {args.chat.channel} to using {args.message.query}''')
 @feature('speedrun.com')
 @permission('moderator')
 async def commandSpeedrunComGame(args: ChatCommandArgs) -> bool:
+    db: DatabaseMain
+    cursor: aioodbc.cursor.Cursor
     if len(args.message) < 2:
-        await speedruncom.clear_game(args.database, args.chat.channel)
+        async with DatabaseMain.acquire() as db:
+            await speedruncom.clear_game(db, args.chat.channel)
         args.chat.send(f'''\
 Set the game for !wr and !pb to {args.chat.channel} Twitch game \
 (Currently: {args.chat.twitchGame})''')
         return True
 
     search = args.message.lower[1:]
-    cursor: aioodbc.cursor.Cursor
-    async with await args.database.cursor() as cursor:
+    async with DatabaseMain.acquire() as db, await db.cursor() as cursor:
         await speedruncom.load_game(args.chat, cursor, None, search,
                                     args.timestamp)
 
-    if speedruncom.gameSearch[search] is None:
-        args.chat.send(f'''\
+        if speedruncom.gameSearch[search] is None:
+            args.chat.send(f'''\
 Cannot find '{args.message.query}' on speedrun.com''')
-        return True
-    game: speedrundata.Game
-    game = speedruncom.games[speedruncom.gameSearch[search]]
-    await speedruncom.set_game(args.database, args.chat.channel,
-                               game.id)
+            return True
+        game: speedrundata.Game
+        game = speedruncom.games[speedruncom.gameSearch[search]]
+        await speedruncom.set_game(db, args.chat.channel, game.id)
     msg: str
     if (game.internationalName == search
             or game.abbreviation.lower() == search):
@@ -227,8 +234,9 @@ best guess for !wr and !pb to {game.internationalName}'''
 @feature('speedrun.com')
 @permission('moderator')
 async def commandSpeedrunComLevel(args: ChatCommandArgs) -> bool:
+    db: DatabaseMain
     cursor: aioodbc.cursor.Cursor
-    async with await args.database.cursor() as cursor:
+    async with DatabaseMain.acquire() as db, await db.cursor() as cursor:
         chanGameId: Optional[str]
         chanGameId = await speedruncom.channel_gameid(cursor, args.chat)
 
@@ -245,8 +253,7 @@ async def commandSpeedrunComLevel(args: ChatCommandArgs) -> bool:
         return True
 
     if len(args.message) < 2:
-        await speedruncom.clear_level(args.database, args.chat.channel,
-                                      game.id)
+        await speedruncom.clear_level(db, args.chat.channel, game.id)
         args.chat.send(f'''\
 Set to full-game for !wr and !pb in the game '{game.internationalName}'\
 ''')
@@ -271,8 +278,8 @@ Set to full-game for !wr and !pb in the game '{game.internationalName}'\
 Cannot find individual level \
 '{game.internationalName} - {args.message.query}' on speedrun.com''')
         else:
-            await speedruncom.set_level(args.database, args.chat.channel,
-                                        game.id, levelId)
+            await speedruncom.set_level(db, args.chat.channel, game.id,
+                                        levelId)
             args.chat.send(f'''\
 Set the level to '{game.levels[levelId].name}' for !wr and !pb for the game \
 '{game.internationalName}'\
@@ -283,8 +290,9 @@ Set the level to '{game.levels[levelId].name}' for !wr and !pb for the game \
 @feature('speedrun.com')
 @permission('moderator')
 async def commandSpeedrunComCategory(args: ChatCommandArgs) -> bool:
+    db: DatabaseMain
     cursor: aioodbc.cursor.Cursor
-    async with await args.database.cursor() as cursor:
+    async with DatabaseMain.acquire() as db, await db.cursor() as cursor:
         chanGameId: Optional[str]
         chanGameId = await speedruncom.channel_gameid(cursor, args.chat)
 
@@ -310,8 +318,8 @@ async def commandSpeedrunComCategory(args: ChatCommandArgs) -> bool:
             categories = game.levels[levelId].categories
 
     if len(args.message) < 2:
-        await speedruncom.clear_category(args.database, args.chat.channel,
-                                         game.id, levelId)
+        await speedruncom.clear_category(db, args.chat.channel, game.id,
+                                         levelId)
         categoryId: Optional[str] = speedruncom.default_categoryid(categories)
         if categoryId is None:
             args.chat.send(f'''\
@@ -339,8 +347,8 @@ Set category to default '{category.name}' for !wr and !pb in \
 Cannot find category \
 '{game.internationalName}{levelText} - {categorySearch}' on speedrun.com''')
         else:
-            await speedruncom.set_category(args.database, args.chat.channel,
-                                           game.id, levelId, searchCategoryId)
+            await speedruncom.set_category(db, args.chat.channel, game.id,
+                                           levelId, searchCategoryId)
             name: str = categories[searchCategoryId].name
             args.chat.send(f'''\
 Set the category to '{name}' for !wr and !pb for the game \
@@ -352,8 +360,9 @@ Set the category to '{name}' for !wr and !pb for the game \
 @feature('speedrun.com')
 @permission('moderator')
 async def commandSpeedrunComSubCategory(args: ChatCommandArgs) -> bool:
+    db: DatabaseMain
     cursor: aioodbc.cursor.Cursor
-    async with await args.database.cursor() as cursor:
+    async with DatabaseMain.acquire() as db, await db.cursor() as cursor:
         chanGameId: Optional[str]
         chanGameId = await speedruncom.channel_gameid(cursor, args.chat)
 
@@ -397,7 +406,7 @@ change categories''')
         values = []
         for variableId in variables:
             await speedruncom.clear_variable(
-                args.database, args.chat.channel, game.id, levelId, categoryId,
+                db, args.chat.channel, game.id, levelId, categoryId,
                 variableId)
             variable = speedruncom.variables[variableId]
             values.append(variable.values[variable.default])
@@ -428,8 +437,8 @@ Cannot find variable value matching '{args.message.query}' for \
 '{game.internationalName}{levelText} - {category.name}' on speedrun.com''')
         else:
             variable = speedruncom.variables[searchVariableId]
-            await speedruncom.set_variable(args.database, args.chat.channel,
-                                           game.id, levelId, categoryId,
+            await speedruncom.set_variable(db, args.chat.channel, game.id,
+                                           levelId, categoryId,
                                            searchVariableId, searchValue)
             args.chat.send(f'''\
 Set the variable '{variable.name}' to '{args.message.query}' \
@@ -442,8 +451,9 @@ for !wr and !pb for \
 @feature('speedrun.com')
 @permission('moderator')
 async def commandSpeedrunComVariable(args: ChatCommandArgs) -> bool:
+    db: DatabaseMain
     cursor: aioodbc.cursor.Cursor
-    async with await args.database.cursor() as cursor:
+    async with DatabaseMain.acquire() as db, await db.cursor() as cursor:
         chanGameId: Optional[str]
         chanGameId = await speedruncom.channel_gameid(cursor, args.chat)
 
@@ -487,7 +497,7 @@ change categories''')
     if len(args.message) < 2:
         for variable in variables:
             await speedruncom.clear_variable(
-                args.database, args.chat.channel, game.id, levelId, categoryId,
+                db, args.chat.channel, game.id, levelId, categoryId,
                 variable.id)
         args.chat.send(f'''\
 Reverted all variables to any value for !wr and !pb in \
@@ -515,8 +525,8 @@ Cannot find variable value matching '{args.message.query}' for \
  on speedrun.com''')
         else:
             variable = speedruncom.variables[searchVariableId]
-            await speedruncom.set_variable(args.database, args.chat.channel,
-                                           game.id, levelId, categoryId,
+            await speedruncom.set_variable(db, args.chat.channel, game.id,
+                                           levelId, categoryId,
                                            searchVariableId, searchValue)
             args.chat.send(f'''\
 Set the variable '{variable.name}' to '{args.message.query}' \
@@ -529,8 +539,9 @@ for !wr and !pb for \
 @feature('speedrun.com')
 @permission('moderator')
 async def commandSpeedrunComRegion(args: ChatCommandArgs) -> bool:
+    db: DatabaseMain
     cursor: aioodbc.cursor.Cursor
-    async with await args.database.cursor() as cursor:
+    async with DatabaseMain.acquire() as db, await db.cursor() as cursor:
         chanGameId: Optional[str]
         chanGameId = await speedruncom.channel_gameid(cursor, args.chat)
 
@@ -547,7 +558,7 @@ async def commandSpeedrunComRegion(args: ChatCommandArgs) -> bool:
         return True
 
     if len(args.message) < 2:
-        speedruncom.clear_region(args.database, args.chat.channel, game.id)
+        speedruncom.clear_region(db, args.chat.channel, game.id)
         args.chat.send(f'''\
 Set to any region for !wr and !pb in the game '{game.internationalName}'\
 ''')
@@ -566,7 +577,7 @@ Set to any region for !wr and !pb in the game '{game.internationalName}'\
 Cannot find individual region '{args.message.query}' for '{game}' on \
 speedrun.com''')
         else:
-            await speedruncom.set_region(args.database, args.chat.channel,
+            await speedruncom.set_region(db, args.chat.channel,
                                          game.id, regionId)
             args.chat.send(f'''\
 Set the region to '{speedruncom.regions[regionId].name}' for !wr and !pb for \
@@ -578,8 +589,9 @@ the game '{game.internationalName}'\
 @feature('speedrun.com')
 @permission('moderator')
 async def commandSpeedrunComPlatform(args: ChatCommandArgs) -> bool:
+    db: DatabaseMain
     cursor: aioodbc.cursor.Cursor
-    async with await args.database.cursor() as cursor:
+    async with DatabaseMain.acquire() as db, await db.cursor() as cursor:
         chanGameId: Optional[str]
         chanGameId = await speedruncom.channel_gameid(cursor, args.chat)
 
@@ -596,8 +608,7 @@ async def commandSpeedrunComPlatform(args: ChatCommandArgs) -> bool:
         return True
 
     if len(args.message) < 2:
-        await speedruncom.clear_platform(args.database, args.chat.channel,
-                                         game.id)
+        await speedruncom.clear_platform(db, args.chat.channel, game.id)
         args.chat.send(f'''\
 Set to any platform for !wr and !pb in the game '{game.internationalName}'\
 ''')
@@ -616,8 +627,8 @@ Set to any platform for !wr and !pb in the game '{game.internationalName}'\
 Cannot find individual platform '{args.message.query}' for '{game}' on \
 speedrun.com''')
         else:
-            await speedruncom.set_platform(args.database, args.chat.channel,
-                                           game.id, platformId)
+            await speedruncom.set_platform(db, args.chat.channel, game.id,
+                                           platformId)
             args.chat.send(f'''\
 Set the platform to '{speedruncom.platforms[platformId].name}' \
 for !wr and !pb for the game '{game.internationalName}'\
@@ -628,8 +639,9 @@ for !wr and !pb for the game '{game.internationalName}'\
 @feature('speedrun.com')
 @cooldown(timedelta(seconds=60), 'leaderboard', 'owner')
 async def commandLeaderboard(args: ChatCommandArgs) -> bool:
+    db: DatabaseMain
     cursor: aioodbc.cursor.Cursor
-    async with await args.database.cursor() as cursor:
+    async with DatabaseMain.acquire() as db, await db.cursor() as cursor:
         chanGameId: Optional[str]
         chanGameId = await speedruncom.channel_gameid(cursor, args.chat)
 

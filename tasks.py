@@ -5,7 +5,7 @@ import aioodbc.cursor
 
 import bot
 from bot import data, globals  # noqa: F401
-from lib import database
+from lib.database import DatabaseMain
 
 from .library import speedruncom, speedrundata
 
@@ -108,8 +108,8 @@ async def refresh(timestamp: datetime) -> None:
         return
 
     # Proactive loading
-    async with database.get_database() as database_, \
-            await database_.cursor() as cursor:
+    db: DatabaseMain
+    async with DatabaseMain.acquire() as db, await db.cursor() as cursor:
         await load_info(timestamp, cursor)
 
 
